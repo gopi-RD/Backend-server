@@ -1,14 +1,17 @@
 const express = require('express')
 const app = express()
-const path = require('path')
+const path = require('path') 
+const cors=require("cors")
 app.use(express.json())
+app.use(cors())
+
 const {open} = require('sqlite')
 const sqlite3 = require('sqlite3')
 const bcrypt=require("bcrypt")
 const jwt=require("jsonwebtoken")
 
 
-const dbpath = path.join(__dirname, 'team')
+const dbpath = path.join(__dirname, 'team.db')
 
 let db = null
 
@@ -34,8 +37,9 @@ const authenticateAPI=async (request,response,next)=>{
   let jwtToken; 
   if (authHeaders!==undefined){
     jwtToken=authHeaders.split(" ")[1]
+    console.log(jwtToken)
   }
-  if (jwtToken!==undefined){
+  if (jwtToken===undefined){
     response.status(401)
     response.end("Invalid jwt token")
   }else{
@@ -67,15 +71,15 @@ app.get("/profile",authenticateAPI,async (request,response)=>{
 
 app.post("/register",async (request,response)=>{
   try{
-    const {userName,password,gender}=request.body;
+    const {username,password,gender}=request.body;
     const hashedPassword = await bcrypt.hash(password,10)
 
-    const selectUser=`SELECT * FROM userDetails WHERE username="${userName}" ;`
+    const selectUser=`SELECT * FROM userDetails WHERE username="${username}" ;`
     const dbUser=await db.get(selectUser)
    if (dbUser===undefined){
 
     const query=`INSERT INTO userDetails(username,password,gender)VALUES(
-      "${userName}","${hashedPassword}","${gender}"
+      "${username}","${hashedPassword}","${gender}"
     );`;
    await db.run(query)
     response.send("successfully Registered");
@@ -92,8 +96,8 @@ app.post("/register",async (request,response)=>{
 })
 
 app.post("/login",async (request,response)=>{
-  const {userName,password}=request.body 
-  const selectUser=`SELECT * FROM userDetails WHERE username="${userName}" ;`
+  const {username,password}=request.body 
+  const selectUser=`SELECT * FROM userDetails WHERE username="${username}" ;`
   const dbUser=await db.get(selectUser)
   if (dbUser===undefined){
     response.status(400)
@@ -101,10 +105,10 @@ app.post("/login",async (request,response)=>{
   }else{
     isPasswordMatch= await bcrypt.compare(password,dbUser.password); 
     if (isPasswordMatch===true){
-      const payload={username:userName}
+      const payload={username:username}
 
-      const jwtToken= await jwt.sign(payload,"Gopi")
-      response.send({jwtToken})
+      const jwt_token= await jwt.sign(payload,"Gopi")
+      response.send({jwt_token})
       
     }else{
       response.status(400)
@@ -114,3 +118,10 @@ app.post("/login",async (request,response)=>{
 
 })
 
+
+app.delete("/delete",async (request,response)=>{
+
+const deleteQuery=`DELETE FROM userDetails; `
+await db.run(deleteQuery)
+response.send("Delete Successfuly")
+})
